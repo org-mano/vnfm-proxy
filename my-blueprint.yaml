@@ -1,0 +1,50 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  This blueprint installs a simple web server on the manager VM using Cloudify's script plugin.
+
+imports:
+  - http://www.getcloudify.org/spec/cloudify/4.1m2/types.yaml
+  - http://www.getcloudify.org/spec/diamond-plugin/1.3.6/plugin.yaml
+  - http://www.getcloudify.org/spec/fabric-plugin/1.3/plugin.yaml
+
+inputs:
+  server_ip:
+    description: >
+      The ip of the server the application will be deployed on.
+  agent_user:
+    description: >
+      User name used when SSH-ing into the started machine.
+    default: root
+  agent_private_key_path:
+    description: >
+      Path to a private key that resides on the management machine.
+      SSH-ing into agent machines will be done with this key.
+    default: /tmp/id_rsa
+  area:
+    description: > 
+      deploy area info
+
+node_templates:
+  vm:
+    type: cloudify.nodes.Compute
+    properties:
+      ip: { get_input: server_ip }
+      agent_config:
+        user: { get_input: agent_user }
+        key: { get_input: agent_private_key_path }
+    interfaces:
+      custom:
+        do_command: scripts/do_command.py
+
+workflows:
+  send_command:
+    mapping: scripts/send_command.py
+    parameters:
+      command:
+        description: the command to nfvm agent
+              
+outputs:
+  http_endpoint:
+    description: Web server external endpoint
+    value: { concat: ['http://', { get_property: [ vm, ip ] }, ':'] }
